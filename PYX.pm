@@ -5,12 +5,100 @@ package XML::PYX;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = '0.05';
+$VERSION = '0.06';
+
+$XML::PYX::Lame = 0;
 
 sub encode {
 	my $text = shift;
 	$text =~ s/\n/\\n/g;
 	return $text;
+}
+
+sub parse {
+	my $output = shift;
+	my $ioref;
+	my $arg = shift @_;
+	
+	if (ref($arg) and UNIVERSAL::isa($arg, 'IO::Handler')) {
+		$ioref = $arg;
+	} else {
+		eval {
+			$ioref = *{$arg}{IO};
+		};
+	}
+	if (!defined($ioref)) {
+		die "Can't get filehandle!\n";
+	}
+	my $xml;
+	# may have already done $ioref in parse, so rewind
+	seek($ioref,0,0);
+	{
+		local $/;
+		$xml = <$ioref>;
+	}
+	my $res;
+	my @stack;
+	while($xml =~ m/\G([^<]*)(<([\?!\/]?)([\w\-]+))?/gc) {
+		my ($data, $type, $tag) = ($1, $3, $4);
+#		warn "$data $type $tag\n";
+		if (length $data) {
+			$res .= $output->("-" . encode($data) . "\n");
+		}
+		
+		last unless $type || $tag;
+		
+		if ($type eq '?') {
+			if ($xml =~ m/\G\s+(.*?)\?>/gcs) {
+				# processing instruction
+				my $data = $1;
+				$res .= $output->("?$tag " . encode($data) . "\n");
+			}
+			else {
+				die "Invalid psuedo XML: No end to processing instruction\n";
+			}
+		}
+		elsif ($type eq '!') {
+			if ($tag eq '--') {
+				# comment
+				if ($xml =~ m/\G(.*?)-->/gcs) {
+					# pyx doesn't support comments!
+				}
+				else {
+					die "Invalid psuedo XML: No end to comment\n";
+				}
+			}
+			else {
+				die "Invalid tag <!$tag\n";
+			}
+		}
+		elsif ($type eq '/') {
+			# close element
+			if ($tag eq $stack[0]) {
+				shift @stack;
+				if ($xml =~ m/\G\s*>/gc) {
+					$res .= $output->(")$tag\n");
+				}
+				else {
+					die "Invalid psuedo XML: Bad close tag\n";
+				}
+			}
+			else {
+				die "Invalid psuedo XML: Close tag mismatch\n";
+			}
+		}
+		else {
+			# start element
+			unshift @stack, $tag;
+			$res .= $output->("($tag\n");
+			while($xml =~ m/\G(\s*(\w+)\s*=\s*(["'])(.*?)\3|>)/gcs) {
+				last if $1 eq '>';
+				my ($key, $val) = ($2, $4);
+				$res .= $output->("A$key " . encode($val) . "\n");
+			}
+		}
+	}
+	return $res;
 }
 
 {
@@ -22,12 +110,20 @@ sub encode {
 	@ISA = 'XML::Parser';
 
 	sub new {
-		my ($class, %args) = (@_, 'Style' => 'PYX');
+		my ($class, %args) = (@_, 'Style' => 'PYX', '_output' => sub { shift; });
 		if ($args{Validating}) {
 			require XML::Checker::Parser;
 			@ISA = 'XML::Checker::Parser';
 		}
 		$class->SUPER::new(%args);
+	}
+	
+	sub parse {
+		my $self = shift;
+		if ($XML::PYX::Lame) {
+			return XML::PYX::parse($self->{_output}, @_);
+		}
+		return $self->SUPER::parse(@_);
 	}
 }
 
@@ -40,12 +136,20 @@ sub encode {
 	@ISA = 'XML::Parser';
 	
 	sub new {
-		my ($class, %args) = (@_, 'Style' => 'PYX_CSF');
+		my ($class, %args) = (@_, 'Style' => 'PYX', '_output' => sub { print shift; undef; });
 		if ($args{Validating}) {
 			require XML::Checker::Parser;
 			@ISA = 'XML::Checker::Parser';
 		}
 		$class->SUPER::new(%args);
+	}
+
+	sub parse {
+		my $self = shift;
+		if ($XML::PYX::Lame) {
+			return XML::PYX::parse($self->{_output}, @_);
+		}
+		return $self->SUPER::parse(@_);
 	}
 }
 
@@ -59,61 +163,35 @@ sub encode {
 	sub Final {
 		return $_PYX;
 	}
+	
+	sub Init {
+		undef $_PYX;
+	}
 
 	sub Char {
 		my ($e, $t) = @_;
-		$_PYX .= "-" . XML::PYX::encode($t) . "\n";
+		$_PYX .= $e->{_output}->("-" . XML::PYX::encode($t) . "\n");
 	}
 
 	sub Start {
 		my ($e, $tag, @attr) = @_;
-		$_PYX .= "($tag\n";
+		$_PYX .= $e->{_output}->("($tag\n");
 
 		while(@attr) {
 			my ($key, $val) = (shift(@attr), shift(@attr));
-			$_PYX .= "A$key " . XML::PYX::encode($val) . "\n";
+			$_PYX .= $e->{_output}->("A$key " . XML::PYX::encode($val) . "\n");
 		}
+		
 	}
 
 	sub End {
 		my ($e, $tag) = @_;
-		$_PYX .= ")$tag\n";
+		$_PYX .= $e->{_output}->(")$tag\n");
 	}
 
 	sub Proc {
 		my ($e, $target, $data) = @_;
-		$_PYX .= "?$target " . XML::PYX::encode($data) . "\n";
-	}
-}
-
-{
-	package XML::Parser::PYX_CSF;
-
-	$XML::Parser::Built_In_Styles{PYX_CSF} = 1;
-
-	sub Char {
-		my ($e, $t) = @_;
-		print "-" , XML::PYX::encode($t) , "\n";
-	}
-
-	sub Start {
-		my ($e, $tag, @attr) = @_;
-		print "($tag\n";
-
-		while(@attr) {
-			my ($key, $val) = (shift(@attr), shift(@attr));
-			print "A$key " , XML::PYX::encode($val) , "\n";
-		}
-	}
-
-	sub End {
-		my ($e, $tag) = @_;
-		print ")$tag\n";
-	}
-
-	sub Proc {
-		my ($e, $target, $data) = @_;
-		print "?$target " , XML::PYX::encode($data) , "\n";
+		$_PYX .= $e->{_output}->("?$target " . XML::PYX::encode($data) . "\n");
 	}
 }
 
@@ -156,6 +234,14 @@ string on a call to parse or parsefile. The latter stands for B<To
 Currently Selected Filehandle>. Instead of returning a string, it sends
 output directly to the currently selected filehandle. This is much better
 for pipelined utilities for obvious reasons.
+
+There's a special variable: $XML::PYX::Lame. Set it to 1 to use a "Lame"
+parser that simply uses regexps. This is useful, for example, if you are
+changing the input to invalid XML for some reason. You can then use
+$XML::PYX::Lame = 1 to enable the non-xml parser. It does check for some
+things, like balanced tags, but otherwise it's pretty lame :)
+
+Lame mode is enabled for pyx and pyxw with the B<-l> option.
 
 =head1 AUTHOR
 

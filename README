@@ -32,6 +32,14 @@ DESCRIPTION
     output directly to the currently selected filehandle. This is much
     better for pipelined utilities for obvious reasons.
 
+    There's a special variable: $XML::PYX::Lame. Set it to 1 to use a "Lame"
+    parser that simply uses regexps. This is useful, for example, if you are
+    changing the input to invalid XML for some reason. You can then use
+    $XML::PYX::Lame = 1 to enable the non-xml parser. It does check for some
+    things, like balanced tags, but otherwise it's pretty lame :)
+
+    Lame mode is enabled for pyx and pyxw with the -l option.
+
 AUTHOR
     Matt Sergeant, matt@sergeant.org
 

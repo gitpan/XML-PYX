@@ -4,5 +4,11 @@ use XML::PYX;
 
 my $p = XML::PYX::Parser::ToCSF->new;
 
-defined $ARGV[0] && $p->parsefile($ARGV[0]) || $p->parse(\*STDIN);
+if (@ARGV && $ARGV[0] eq '-l') {
+	shift @ARGV;
+	$XML::PYX::Lame = 1;
+}
+
+if (@ARGV) { $p->parsefile($ARGV[0]); }
+else { $p->parse(\*STDIN); }
 
