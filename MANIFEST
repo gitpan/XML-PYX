@@ -4,5 +4,6 @@ PYX.pm
 pyx
 pyxv
 pyxw
+pyxhtml
 t/base.t
 README

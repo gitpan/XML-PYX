@@ -1,11 +1,11 @@
-# $Id: PYX.pm,v 1.7 2000/03/19 18:32:49 matt Exp $
+# $Id: PYX.pm,v 1.9 2000/06/21 17:05:51 matt Exp $
 
 package XML::PYX;
 
 use strict;
 use vars qw($VERSION);
 
-$VERSION = '0.06';
+$VERSION = '0.07';
 
 $XML::PYX::Lame = 0;
 
@@ -221,6 +221,7 @@ are probably currently more use than the module:
 	pyx - a XML to PYX converter using XML::Parser
 	pyxv - a Validating XML to PYX converter using XML::Checker::Parser
 	pyxw - a PYX to XML converter
+	pyxhtml - an HTML to PYX converter using HTML::TreeBuilder
 
 All these utilities can be pipelined together, so you can have:
 
