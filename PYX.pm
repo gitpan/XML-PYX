@@ -1,11 +1,11 @@
-# $Id: PYX.pm,v 1.3 2000/03/18 22:26:53 matt Exp $
+# $Id: PYX.pm,v 1.4 2000/03/19 16:55:23 matt Exp $
 
 package XML::PYX;
 
 use strict;
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 {
 	package XML::PYX::Parser;

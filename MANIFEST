@@ -1,3 +1,6 @@
 MANIFEST
 Makefile.PL
 PYX.pm
+pyx
+pyxv
+t/base.t
