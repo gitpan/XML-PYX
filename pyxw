@@ -40,6 +40,8 @@ while(<>) {
 	}
 }
 
+print '>' if $tag_open;
+
 sub encode {
 	my $text = shift;
 	$text =~ s/([$encode])/$encode{$1}/g;

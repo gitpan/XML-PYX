@@ -1,11 +1,11 @@
-# $Id: PYX.pm,v 1.6 2000/03/19 17:42:20 matt Exp $
+# $Id: PYX.pm,v 1.7 2000/03/19 18:32:49 matt Exp $
 
 package XML::PYX;
 
 use strict;
 use vars qw($VERSION);
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 sub encode {
 	my $text = shift;
