@@ -2,7 +2,7 @@
 
 use XML::PYX;
 
-my $p = XML::PYX::Parser->new;
+my $p = XML::PYX::Parser::ToCSF->new;
 
-print $p->parsefile($ARGV[0]);
+$p->parsefile($ARGV[0]);
 

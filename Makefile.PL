@@ -9,5 +9,8 @@ WriteMakefile(
 	'PREREQ_PM' => {
 				'XML::Parser' => '2.23',
 				},
-	'EXE_FILES' => [ 'pyx', 'pyxv' ],
+	'EXE_FILES' => [ 'pyx', 'pyxv', 'pyxw' ],
+	'dist' => {
+					'PREOP' => 'perl -MPod::Text -e "pod2text(q(PYX.pm))" > README',
+				},
 	);

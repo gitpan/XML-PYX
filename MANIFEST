@@ -3,4 +3,6 @@ Makefile.PL
 PYX.pm
 pyx
 pyxv
+pyxw
 t/base.t
+README

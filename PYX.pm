@@ -1,11 +1,17 @@
-# $Id: PYX.pm,v 1.4 2000/03/19 16:55:23 matt Exp $
+# $Id: PYX.pm,v 1.6 2000/03/19 17:42:20 matt Exp $
 
 package XML::PYX;
 
 use strict;
 use vars qw($VERSION);
 
-$VERSION = '0.03';
+$VERSION = '0.04';
+
+sub encode {
+	my $text = shift;
+	$text =~ s/\n/\\n/g;
+	return $text;
+}
 
 {
 	package XML::PYX::Parser;
@@ -17,6 +23,24 @@ $VERSION = '0.03';
 
 	sub new {
 		my ($class, %args) = (@_, 'Style' => 'PYX');
+		if ($args{Validating}) {
+			require XML::Checker::Parser;
+			@ISA = 'XML::Checker::Parser';
+		}
+		$class->SUPER::new(%args);
+	}
+}
+
+{
+	package XML::PYX::Parser::ToCSF;
+	use vars qw/@ISA/;
+	
+	use XML::Parser;
+	
+	@ISA = 'XML::Parser';
+	
+	sub new {
+		my ($class, %args) = (@_, 'Style' => 'PYX_CSF');
 		if ($args{Validating}) {
 			require XML::Checker::Parser;
 			@ISA = 'XML::Checker::Parser';
@@ -38,7 +62,7 @@ $VERSION = '0.03';
 
 	sub Char {
 		my ($e, $t) = @_;
-		$_PYX .= "-" . encode($t) . "\n";
+		$_PYX .= "-" . XML::PYX::encode($t) . "\n";
 	}
 
 	sub Start {
@@ -47,7 +71,7 @@ $VERSION = '0.03';
 
 		while(@attr) {
 			my ($key, $val) = (shift(@attr), shift(@attr));
-			$_PYX .= "A$key " . encode($val) . "\n";
+			$_PYX .= "A$key " . XML::PYX::encode($val) . "\n";
 		}
 	}
 
@@ -58,13 +82,38 @@ $VERSION = '0.03';
 
 	sub Proc {
 		my ($e, $target, $data) = @_;
-		$_PYX .= "?$target " . encode($data) . "\n";
+		$_PYX .= "?$target " . XML::PYX::encode($data) . "\n";
+	}
+}
+
+{
+	package XML::Parser::PYX_CSF;
+
+	$XML::Parser::Built_In_Styles{PYX_CSF} = 1;
+
+	sub Char {
+		my ($e, $t) = @_;
+		print "-" , XML::PYX::encode($t) , "\n";
 	}
 
-	sub encode {
-		my $text = shift;
-		$text =~ s/\n/\\n/g;
-		return $text;
+	sub Start {
+		my ($e, $tag, @attr) = @_;
+		print "($tag\n";
+
+		while(@attr) {
+			my ($key, $val) = (shift(@attr), shift(@attr));
+			print "A$key " , XML::PYX::encode($val) , "\n";
+		}
+	}
+
+	sub End {
+		my ($e, $tag) = @_;
+		print ")$tag\n";
+	}
+
+	sub Proc {
+		my ($e, $target, $data) = @_;
+		print "?$target " , XML::PYX::encode($data) , "\n";
 	}
 }
 
@@ -79,7 +128,7 @@ XML::PYX - XML to PYX generator
 
   use XML::PYX;
   my $parser = XML::PYX::Parser->new;
-  print $parser->parsefile($filename);
+  my $string = $parser->parsefile($filename);
 
 =head1 DESCRIPTION
 
@@ -87,17 +136,26 @@ After reading about PYX on XML.com, I thought it was a pretty cool idea,
 so I built this, to generate PYX from XML using perl. See
 http://www.xml.com/pub/2000/03/15/feature/index.html for an excellent
 introduction.
-		
-=head1 HISTORY
 
-=over 8
+The package contains 2 usable packages, and 3 utilities that 
+are probably currently more use than the module:
 
-=item 0.01
+	pyx - a XML to PYX converter using XML::Parser
+	pyxv - a Validating XML to PYX converter using XML::Checker::Parser
+	pyxw - a PYX to XML converter
 
-Original version; created by h2xs 1.19
+All these utilities can be pipelined together, so you can have:
 
-=back
+	pyx test.xml | grep -v "^-" | pyxw > new.xml
 
+Which should remove all text from an XML file (leaving only tags).
+
+The 2 packages are XML::PYX::Parser and XML::PYX::Parser::ToCSF. The
+former is a direct subclass of XML::Parser that simply returns a PYX
+string on a call to parse or parsefile. The latter stands for B<To
+Currently Selected Filehandle>. Instead of returning a string, it sends
+output directly to the currently selected filehandle. This is much better
+for pipelined utilities for obvious reasons.
 
 =head1 AUTHOR
 
